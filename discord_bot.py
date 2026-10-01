@@ -126,18 +126,18 @@ async def poll_guild_status():
 async def on_ready():
     logger.info(f"Discord Bot logged in as {bot.user} (ID: {bot.user.id})")
     
-    # Sync slash commands directly to each connected guild for INSTANT visibility (0s delay)
+    # Clean up any duplicate guild commands so each command only appears ONCE
     for guild in bot.guilds:
         try:
-            bot.tree.copy_global_to(guild=guild)
-            synced_guild = await bot.tree.sync(guild=guild)
-            logger.info(f"Instant Guild Sync: {len(synced_guild)} slash commands synced to '{guild.name}' ({guild.id})")
-        except Exception as e:
-            logger.warning(f"Could not sync directly to guild {guild.name}: {e}")
+            bot.tree.clear_commands(guild=guild)
+            await bot.tree.sync(guild=guild)
+        except Exception:
+            pass
 
+    # Single global command registration
     try:
         synced = await bot.tree.sync()
-        logger.info(f"Global Sync: {len(synced)} Slash Commands synced globally.")
+        logger.info(f"Slash Commands: {len(synced)} active commands registered.")
     except Exception as e:
         logger.error(f"Failed to sync slash commands: {e}")
 
