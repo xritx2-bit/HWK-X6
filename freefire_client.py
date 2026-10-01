@@ -111,31 +111,25 @@ class FreeFireApiClient(BaseFreeFireClient):
 
 class FreeFireMockClient(BaseFreeFireClient):
     """
-    Simulation client for local testing and demonstration.
-    Allows running the bot immediately without requiring active Free Fire session tokens.
-    Simulates dynamic player activity (playing CS/BR, entering lobby, invites, and approvals).
+    Client for Free Fire guild tracking.
+    When auto_simulate=False (default), it stays calm and silent with no fake spam.
     """
-    def __init__(self, guild_id: str = "772183921"):
+    def __init__(self, guild_id: str = "3008075139", auto_simulate: bool = False):
         self.guild_id = guild_id
+        self.auto_simulate = auto_simulate
         self._step_counter = 0
 
-        # Sample guild roster
+        # Sample guild roster (HWK X6)
         self.members: Dict[str, GuildMember] = {
-            "10000001": GuildMember(uid="10000001", nickname="⚡THUNDER⚡", level=72, role="Leader", state=MemberState.ONLINE),
-            "10000002": GuildMember(uid="10000002", nickname="亗_SHADOW_亗", level=68, role="Officer", state=MemberState.ONLINE),
-            "10000003": GuildMember(uid="10000003", nickname="★VIPER★", level=65, role="Officer", state=MemberState.OFFLINE),
-            "10000004": GuildMember(uid="10000004", nickname="Hunter_007", level=59, role="Member", state=MemberState.OFFLINE),
-            "10000005": GuildMember(uid="10000005", nickname="NoobMaster99", level=54, role="Member", state=MemberState.OFFLINE),
-            "10000006": GuildMember(uid="10000006", nickname="Phoenix_FF", level=61, role="Member", state=MemberState.OFFLINE),
+            "15209232058": GuildMember(uid="15209232058", nickname="HWK_BOT", level=70, role="Officer", state=MemberState.ONLINE),
         }
         self.logs: List[dict] = []
         self._log_id = 100
 
     async def get_guild_snapshot(self, guild_id: str) -> Optional[GuildSnapshot]:
-        self._step_counter += 1
-        
-        # Simulate realistic gameplay changes every few cycles
-        if self._step_counter == 2:
+        if self.auto_simulate:
+            self._step_counter += 1
+            if self._step_counter == 2:
             # Hunter_007 comes online and starts playing Clash Squad
             m = self.members["10000004"]
             m.state = MemberState.PLAYING_CS
