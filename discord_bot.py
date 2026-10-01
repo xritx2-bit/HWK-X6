@@ -6,7 +6,7 @@ from discord.ext import commands, tasks
 from typing import Optional, Literal
 
 from config import config
-from freefire_client import FreeFireApiClient, FreeFireMockClient, BaseFreeFireClient
+from freefire_client import FreeFireApiClient, BaseFreeFireClient
 from guild_tracker import GuildTracker
 from channel_manager import ChannelManager
 from player_tracker import PlayerTracker
@@ -38,19 +38,13 @@ channel_mgr = ChannelManager(default_channel_id=config.DISCORD_CHANNEL_ID)
 player_tracker = PlayerTracker(my_guild_id=config.FF_GUILD_ID or "3008075139", my_guild_name="HWK X6")
 
 # Free Fire client
-ff_client: BaseFreeFireClient
-if config.MOCK_MODE or not config.FF_ACCESS_TOKEN:
-    logger.info("Starting Free Fire client in SIMULATION / MOCK MODE.")
-    ff_client = FreeFireMockClient(guild_id=config.FF_GUILD_ID or "3008075139")
-else:
-    logger.info("Starting Free Fire client in LIVE API MODE.")
-    ff_client = FreeFireApiClient(
-        gateway_url=config.FF_API_GATEWAY_URL or "http://localhost:8080",
-        access_token=config.FF_ACCESS_TOKEN,
-        account_uid=config.FF_BOT_UID,
-        region=config.FF_REGION,
-        api_key=config.FF_API_KEY
-    )
+ff_client: BaseFreeFireClient = FreeFireApiClient(
+    gateway_url=config.FF_API_GATEWAY_URL,
+    access_token=config.FF_ACCESS_TOKEN,
+    account_uid=config.FF_BOT_UID or "15209232058",
+    region=config.FF_REGION or "IND",
+    api_key=config.FF_API_KEY
+)
 
 async def deliver_embed(category: str, embed: discord.Embed):
     """Deliver embed to the dedicated channel for that category, or fallback."""

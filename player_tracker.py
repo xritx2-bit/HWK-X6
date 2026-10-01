@@ -93,14 +93,14 @@ class PlayerTracker:
                 last_updated=int(time.time())
             )
 
-        # Simulation / Default Profile if not in departed registry
+        # Default Profile if not in departed registry and no live session yet
         return PlayerProfile(
             uid=uid,
-            nickname=f"Player_{uid[-4:]}",
-            level=60,
-            likes=950,
-            current_guild_id="88990011",
-            current_guild_name="SOUL_ESPORTS",
+            nickname=f"Player ({uid})",
+            level=0,
+            likes=0,
+            current_guild_id=None,
+            current_guild_name=None,
             previous_guild_id=self.my_guild_id,
             previous_guild_name=self.my_guild_name,
             last_updated=int(time.time())

@@ -1,7 +1,6 @@
 import asyncio
 import aiohttp
 import logging
-import random
 import time
 from abc import ABC, abstractmethod
 from typing import Dict, List, Optional
@@ -23,16 +22,11 @@ class BaseFreeFireClient(ABC):
 
 class FreeFireApiClient(BaseFreeFireClient):
     """
-    Client that connects to an authenticated Free Fire API Gateway or Session Endpoint.
-    
-    IMPORTANT ARCHITECTURE NOTE:
-    Free Fire uses encrypted Protocol Buffers over TCP/TLS and does not have an open public API.
-    To monitor private guild activity (in-match statuses, guild approvals, invites), 
-    the request must carry the authentication token (JWT / session token) of an alt account
-    that is physically an Officer or Elder inside the target guild.
+    Real client that connects to an authenticated Free Fire API Gateway or Session Endpoint.
+    Connects to Garena servers for real guild member data, live matches, approvals, and invites.
     """
-    def __init__(self, gateway_url: str, access_token: str = "", account_uid: str = "", region: str = "IND", api_key: str = ""):
-        self.gateway_url = gateway_url.rstrip("/")
+    def __init__(self, gateway_url: str = "", access_token: str = "", account_uid: str = "", region: str = "IND", api_key: str = ""):
+        self.gateway_url = gateway_url.rstrip("/") if gateway_url else ""
         self.access_token = access_token
         self.account_uid = account_uid
         self.region = region
@@ -55,6 +49,18 @@ class FreeFireApiClient(BaseFreeFireClient):
         return self._session
 
     async def get_guild_snapshot(self, guild_id: str) -> Optional[GuildSnapshot]:
+        # If no real gateway or token is connected yet, return a clean state without any fake players
+        if not self.gateway_url:
+            return GuildSnapshot(
+                guild_id=guild_id,
+                guild_name="HWK X6",
+                guild_level=1,
+                member_count=0,
+                max_members=50,
+                members=[],
+                recent_activity_logs=[]
+            )
+
         session = await self._get_session()
         url = f"{self.gateway_url}/api/v1/guild/{guild_id}/members"
         try:
@@ -77,7 +83,7 @@ class FreeFireApiClient(BaseFreeFireClient):
                     
                     return GuildSnapshot(
                         guild_id=guild_id,
-                        guild_name=data.get("guild_name", "Free Fire Guild"),
+                        guild_name=data.get("guild_name", "HWK X6"),
                         guild_level=int(data.get("guild_level", 4)),
                         member_count=len(members),
                         max_members=int(data.get("max_members", 50)),
@@ -85,13 +91,16 @@ class FreeFireApiClient(BaseFreeFireClient):
                         recent_activity_logs=data.get("recent_logs", [])
                     )
                 else:
-                    logger.error(f"Error fetching guild snapshot: HTTP {resp.status}")
+                    logger.warning(f"Free Fire Gateway returned HTTP {resp.status} for guild {guild_id}")
                     return None
         except Exception as e:
-            logger.error(f"Exception connecting to Free Fire Gateway: {e}")
+            logger.error(f"Cannot connect to Free Fire Gateway: {e}")
             return None
 
     async def get_recent_guild_logs(self, guild_id: str) -> List[dict]:
+        if not self.gateway_url:
+            return []
+
         session = await self._get_session()
         url = f"{self.gateway_url}/api/v1/guild/{guild_id}/activity_logs"
         try:
@@ -107,93 +116,3 @@ class FreeFireApiClient(BaseFreeFireClient):
     async def close(self):
         if self._session and not self._session.closed:
             await self._session.close()
-
-
-class FreeFireMockClient(BaseFreeFireClient):
-    """
-    Client for Free Fire guild tracking.
-    When auto_simulate=False (default), it stays calm and silent with no fake spam.
-    """
-    def __init__(self, guild_id: str = "3008075139", auto_simulate: bool = False):
-        self.guild_id = guild_id
-        self.auto_simulate = auto_simulate
-        self._step_counter = 0
-
-        # Sample guild roster (HWK X6)
-        self.members: Dict[str, GuildMember] = {
-            "15209232058": GuildMember(uid="15209232058", nickname="HWK_BOT", level=70, role="Officer", state=MemberState.ONLINE),
-        }
-        self.logs: List[dict] = []
-        self._log_id = 100
-
-    async def get_guild_snapshot(self, guild_id: str) -> Optional[GuildSnapshot]:
-        if self.auto_simulate:
-            self._step_counter += 1
-            if self._step_counter == 2:
-            # Hunter_007 comes online and starts playing Clash Squad
-            m = self.members["10000004"]
-            m.state = MemberState.PLAYING_CS
-            m.game_mode = "Clash Squad Ranked"
-            logger.info(f"[SIMULATION] {m.nickname} started playing Clash Squad Ranked")
-
-        elif self._step_counter == 3:
-            # 亗_SHADOW_亗 starts playing Battle Royale Ranked
-            m = self.members["10000002"]
-            m.state = MemberState.PLAYING_BR
-            m.game_mode = "BR Ranked"
-            logger.info(f"[SIMULATION] {m.nickname} entered Battle Royale Ranked")
-
-            # Hunter_007 sends invite to a friend UID
-            self._log_id += 1
-            self.logs.append({
-                "id": str(self._log_id),
-                "type": "INVITE_SENT",
-                "inviter_uid": "10000004",
-                "inviter_name": "Hunter_007",
-                "target_uid": "99887766",
-                "target_name": "SniperGod_Op",
-                "timestamp": int(time.time())
-            })
-            logger.info("[SIMULATION] Invite sent by Hunter_007 to UID 99887766")
-
-        elif self._step_counter == 4:
-            # An approval event happens: 亗_SHADOW_亗 approves new member "SniperGod_Op"
-            self._log_id += 1
-            self.logs.append({
-                "id": str(self._log_id),
-                "type": "JOIN_APPROVED",
-                "applicant_uid": "99887766",
-                "applicant_name": "SniperGod_Op",
-                "approved_by_uid": "10000002",
-                "approved_by_name": "亗_SHADOW_亗",
-                "timestamp": int(time.time())
-            })
-            # Add member to guild roster
-            self.members["99887766"] = GuildMember(
-                uid="99887766",
-                nickname="SniperGod_Op",
-                level=62,
-                role="Member",
-                state=MemberState.ONLINE
-            )
-            logger.info("[SIMULATION] 亗_SHADOW_亗 approved SniperGod_Op into guild")
-
-        elif self._step_counter == 5:
-            # Hunter_007 finishes match and goes back to Lobby
-            m = self.members["10000004"]
-            m.state = MemberState.ONLINE
-            m.game_mode = None
-            logger.info(f"[SIMULATION] {m.nickname} returned to Lobby")
-
-        return GuildSnapshot(
-            guild_id=guild_id,
-            guild_name="LEGENDARY_ELITE",
-            guild_level=4,
-            member_count=len(self.members),
-            max_members=50,
-            members=list(self.members.values()),
-            recent_activity_logs=list(self.logs)
-        )
-
-    async def get_recent_guild_logs(self, guild_id: str) -> List[dict]:
-        return list(self.logs)
