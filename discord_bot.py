@@ -225,7 +225,18 @@ async def slash_track_player(interaction: discord.Interaction, uid: str):
     clean_uid = uid.strip()
     profile = await player_tracker.lookup_player(clean_uid)
     if not profile:
-        await interaction.followup.send(f"⚠️ Could not find player data for UID `{clean_uid}`.")
+        embed = discord.Embed(
+            title="⚠️ Player Data Unavailable",
+            description=(
+                f"Could not retrieve live data for UID `{clean_uid}`.\n\n"
+                "**Why did this happen?**\n"
+                "• The free API daily request limit (25/25 requests) was reached today.\n"
+                f"• Or the player UID does not exist on region `{config.FF_REGION}`.\n\n"
+                "*Tip: Core guild members (`HWKㅤTONY7`, `HwkeyeX6bot`, `Nx•RITESH`) are cached permanently.*"
+            ),
+            color=0xE74C3C
+        )
+        await interaction.followup.send(embed=embed)
         return
 
     embed = build_player_profile_embed(profile)
@@ -240,7 +251,21 @@ async def slash_last_matches(interaction: discord.Interaction, uid: str):
     clean_uid = uid.strip()
 
     profile = await player_tracker.lookup_player(clean_uid)
-    nickname = profile.nickname if profile else f"Player ({clean_uid})"
+    if not profile:
+        embed = discord.Embed(
+            title="⚠️ Player Data Unavailable",
+            description=(
+                f"Could not retrieve live data for UID `{clean_uid}`.\n\n"
+                "**Why did this happen?**\n"
+                "• The free API daily request limit (25/25 requests) was reached today.\n"
+                f"• Or the player UID does not exist on region `{config.FF_REGION}`."
+            ),
+            color=0xE74C3C
+        )
+        await interaction.followup.send(embed=embed)
+        return
+
+    nickname = profile.nickname
 
     br_pts = 0
     cs_pts = 0
