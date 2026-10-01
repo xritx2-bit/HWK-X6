@@ -153,3 +153,33 @@ def build_player_profile_embed(profile) -> discord.Embed:
 
     embed.set_footer(text="Free Fire Player & Guild History Lookup")
     return embed
+
+
+def build_last_matches_embed(uid: str, nickname: str, matches: list, br_points: int = 0, cs_points: int = 0) -> discord.Embed:
+    embed = discord.Embed(
+        title=f"🎮 Free Fire: Recent Match History",
+        description=f"Match performance and rank session log for **{nickname}** (`{uid}`)",
+        color=0xE67E22
+    )
+    embed.set_author(name="Free Fire Match Performance Tracker", icon_url=FREE_FIRE_ICON_URL)
+    
+    if br_points or cs_points:
+        embed.add_field(name="Current Ranks", value=f"⭐ **BR Points**: {br_points:,} • ⚔️ **CS Score**: {cs_points}", inline=False)
+        
+    if not matches:
+        embed.add_field(
+            name="📊 Match Log Status",
+            value=(
+                "ℹ️ *No previous matches logged yet for this player.*\n"
+                "• **Session Tracking Activated**: The bot has recorded this player's baseline rank points.\n"
+                "• When they complete matches and points update, their matches will automatically be logged here!"
+            ),
+            inline=False
+        )
+    else:
+        for idx, m in enumerate(matches[:10], start=1):
+            val = f"**{m['result']}** ({m['points_delta']})\n📅 `{m['timestamp']}` • {m['details']}"
+            embed.add_field(name=f"#{idx} • {m['mode']}", value=val, inline=False)
+            
+    embed.set_footer(text="Free Fire Real-Time Match Tracker • HWK X6")
+    return embed

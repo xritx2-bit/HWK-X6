@@ -17,8 +17,10 @@ from discord_embeds import (
     build_member_left_embed,
     build_invite_sent_embed,
     build_ex_member_new_guild_embed,
-    build_player_profile_embed
+    build_player_profile_embed,
+    build_last_matches_embed
 )
+from match_tracker import match_tracker
 
 logging.basicConfig(
     level=logging.INFO,
@@ -192,7 +194,17 @@ async def slash_playing(interaction: discord.Interaction):
 
     playing_members = [m for m in snapshot.members if "Playing" in m.state.value or "Match" in m.state.value]
     if not playing_members:
-        await interaction.response.send_message("ℹ️ No guild members are currently inside a match.", ephemeral=True)
+        embed = discord.Embed(
+            title="🎮 Guild Match Activity",
+            description=(
+                "ℹ️ **No active in-game match sockets detected.**\n\n"
+                "• **View Recent Matches**: Use `/last_matches <uid>` to view the last 10 matches recorded for any player!\n"
+                "• **Inspect Player**: Use `/track_player <uid>` to see live rank, level, and guild details."
+            ),
+            color=0x3498DB
+        )
+        embed.set_footer(text="Free Fire Real-Time Match Tracker • HWK X6")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
         return
 
     desc = "\n".join([f"• **{m.nickname}** (`{m.uid}`) - {m.game_mode or m.state.value}" for m in playing_members])
@@ -206,7 +218,7 @@ async def slash_playing(interaction: discord.Interaction):
 
 
 @bot.tree.command(name="track_player", description="Check player profile and which guild they currently belong to by UID")
-@app_commands.describe(uid="Free Fire Player UID (e.g. 15209232058)")
+@app_commands.describe(uid="Free Fire Player UID (e.g. 18402295619, 1270967975)")
 async def slash_track_player(interaction: discord.Interaction, uid: str):
     """Look up a player by UID and show their current & previous guild."""
     await interaction.response.defer()
@@ -217,6 +229,43 @@ async def slash_track_player(interaction: discord.Interaction, uid: str):
         return
 
     embed = build_player_profile_embed(profile)
+    await interaction.followup.send(embed=embed)
+
+
+@bot.tree.command(name="last_matches", description="Show the last 10 matches recorded for a player by UID")
+@app_commands.describe(uid="Free Fire Player UID (e.g. 18402295619, 1270967975, 2256822775)")
+async def slash_last_matches(interaction: discord.Interaction, uid: str):
+    """Look up a player's last 10 match history sessions."""
+    await interaction.response.defer()
+    clean_uid = uid.strip()
+
+    profile = await player_tracker.lookup_player(clean_uid)
+    nickname = profile.nickname if profile else f"Player ({clean_uid})"
+
+    br_pts = 0
+    cs_pts = 0
+    exp_val = 0
+    if config.FF_API_GATEWAY_URL and config.FF_API_KEY:
+        try:
+            import aiohttp
+            async with aiohttp.ClientSession(headers={"User-Agent": "Mozilla/5.0", "Accept-Encoding": "gzip, deflate"}) as session:
+                url = f"{config.FF_API_GATEWAY_URL.rstrip('/')}/main/games/freefire/account/api?sectionName=AllData&PlayerUid={clean_uid}&region={config.FF_REGION.lower()}&useruid={config.FF_USER_UID}&api={config.FF_API_KEY}"
+                async with session.get(url, timeout=aiohttp.ClientTimeout(total=8)) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        res = data.get("result") or {}
+                        acc = res.get("AccountInfo") or {}
+                        nickname = acc.get("AccountName") or nickname
+                        br_pts = int(acc.get("BrRankPoint") or 0)
+                        cs_pts = int(acc.get("csRankingPoints") or 0) if acc.get("csRankingPoints") else 0
+                        exp_val = int(acc.get("AccountEXP") or 0)
+        except Exception as e:
+            logger.warning(f"Error fetching rank details for UID {clean_uid}: {e}")
+
+    match_tracker.record_snapshot(clean_uid, nickname, br_pts, cs_pts, exp_val)
+    matches = match_tracker.get_last_matches(clean_uid, limit=10)
+
+    embed = build_last_matches_embed(clean_uid, nickname, matches, br_pts, cs_pts)
     await interaction.followup.send(embed=embed)
 
 
