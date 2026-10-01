@@ -62,6 +62,52 @@ class FreeFireApiClient(BaseFreeFireClient):
             )
 
         session = await self._get_session()
+        
+        # Support for Free Fire Community API Hub (developers.freefirecommunity.com)
+        if "freefirecommunity.com" in self.gateway_url:
+            url = f"{self.gateway_url}/info?region={self.region.lower()}&uid={self.account_uid}"
+            try:
+                async with session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        clan_info = data.get("clanBasicInfo") or {}
+                        basic_info = data.get("basicInfo") or {}
+                        
+                        clan_name = clan_info.get("clanName") or "HWK X6"
+                        clan_id = str(clan_info.get("clanId") or guild_id)
+                        clan_lvl = int(clan_info.get("clanLevel") or 4)
+                        member_num = int(clan_info.get("memberNum") or 1)
+                        
+                        # Add bot player as member
+                        members = [
+                            GuildMember(
+                                uid=str(self.account_uid),
+                                nickname=basic_info.get("nickname") or "HWK Member",
+                                level=int(basic_info.get("level") or 1),
+                                role="Officer",
+                                state=MemberState.ONLINE,
+                                last_online_timestamp=int(time.time()),
+                                guild_score=0
+                            )
+                        ]
+                        
+                        return GuildSnapshot(
+                            guild_id=clan_id,
+                            guild_name=clan_name,
+                            guild_level=clan_lvl,
+                            member_count=member_num,
+                            max_members=50,
+                            members=members,
+                            recent_activity_logs=[]
+                        )
+                    else:
+                        logger.warning(f"Free Fire API Hub returned HTTP {resp.status}")
+                        return None
+            except Exception as e:
+                logger.error(f"Cannot connect to Free Fire API Hub: {e}")
+                return None
+
+        # Standard custom REST Gateway endpoint
         url = f"{self.gateway_url}/api/v1/guild/{guild_id}/members"
         try:
             async with session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
