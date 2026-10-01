@@ -41,9 +41,10 @@ player_tracker = PlayerTracker(my_guild_id=config.FF_GUILD_ID or "3008075139", m
 ff_client: BaseFreeFireClient = FreeFireApiClient(
     gateway_url=config.FF_API_GATEWAY_URL,
     access_token=config.FF_ACCESS_TOKEN,
-    account_uid=config.FF_BOT_UID or "15209232058",
+    account_uid=config.FF_BOT_UID or "18402295619",
     region=config.FF_REGION or "IND",
-    api_key=config.FF_API_KEY
+    api_key=config.FF_API_KEY,
+    user_uid=config.FF_USER_UID
 )
 
 async def deliver_embed(category: str, embed: discord.Embed):
@@ -169,14 +170,14 @@ async def slash_status(interaction: discord.Interaction):
         description=f"Guild ID: `{snapshot.guild_id}` • Region: `{config.FF_REGION}`",
         color=0x3498DB
     )
-    embed.add_field(name="Members", value=f"👥 {snapshot.member_count}/{snapshot.max_members}", inline=True)
-    embed.add_field(name="Guild Level", value=f"⭐ Level {snapshot.guild_level}", inline=True)
-    embed.add_field(name="Activity Breakdown", value=(
-        f"🟢 In Match: **{playing_count}**\n"
-        f"🔵 In Lobby: **{lobby_count}**\n"
-        f"⚪ Offline: **{offline_count}**"
-    ), inline=False)
-    embed.set_footer(text="Free Fire Guild Activity Monitor")
+    embed.add_field(name="Members", value=f"👥 **{snapshot.member_count}** / {snapshot.max_members}", inline=True)
+    embed.add_field(name="Guild Level", value=f"⭐ **Level {snapshot.guild_level}**", inline=True)
+    
+    if snapshot.members:
+        members_str = "\n".join([f"• **{m.nickname}** (`{m.uid}`) - Lv. {m.level} [{m.role}]" for m in snapshot.members])
+        embed.add_field(name="Key Members", value=members_str, inline=False)
+        
+    embed.set_footer(text="Free Fire Real-Time Guild Monitor • HAWK EYE X6")
     await interaction.response.send_message(embed=embed)
 
 

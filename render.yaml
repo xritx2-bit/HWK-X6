@@ -14,10 +14,16 @@ services:
       - key: FF_GUILD_ID
         value: 3008075139
       - key: FF_BOT_UID
-        value: 15209232058
+        value: 18402295619
       - key: FF_REGION
         value: IND
+      - key: FF_API_GATEWAY_URL
+        value: https://proapis.hlgamingofficial.com
+      - key: FF_API_KEY
+        value: iMsW5PlFrgBWFh6jzseUnb23BuK5dQ
+      - key: FF_USER_UID
+        value: gKsSDI7PIeeiJNDVb1fBBRPT5fG3
       - key: MOCK_MODE
         value: false
       - key: POLL_INTERVAL_SECONDS
-        value: 30
+        value: 1800

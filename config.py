@@ -19,6 +19,7 @@ class Config:
     FF_ACCESS_TOKEN: str = os.getenv("FF_ACCESS_TOKEN", "")  # Alt account session token
     FF_API_GATEWAY_URL: str = os.getenv("FF_API_GATEWAY_URL", "")  # Optional proxy / API gateway URL
     FF_API_KEY: str = os.getenv("FF_API_KEY", "")  # API Key for third-party Free Fire API provider
+    FF_USER_UID: str = os.getenv("FF_USER_UID", "")  # Developer UID for HL Gaming API
 
     # Polling & Mode settings
     POLL_INTERVAL_SECONDS: int = int(os.getenv("POLL_INTERVAL_SECONDS", "30"))

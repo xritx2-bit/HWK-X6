@@ -93,30 +93,53 @@ class PlayerTracker:
                 last_updated=int(time.time())
             )
 
-        # Try live query via API Hub if gateway is configured
+        # Try live query via HL Gaming or other gateway if configured
         from config import config
         if config.FF_API_GATEWAY_URL and config.FF_API_KEY:
             try:
                 import aiohttp
                 async with aiohttp.ClientSession() as session:
-                    url = f"{config.FF_API_GATEWAY_URL.rstrip('/')}/info?region={config.FF_REGION.lower()}&uid={uid}"
-                    headers = {"x-api-key": config.FF_API_KEY}
+                    if "hlgamingofficial.com" in config.FF_API_GATEWAY_URL:
+                        url = f"{config.FF_API_GATEWAY_URL.rstrip('/')}/main/games/freefire/account/api?sectionName=AllData&PlayerUid={uid}&region={config.FF_REGION.lower()}&useruid={config.FF_USER_UID}&api={config.FF_API_KEY}"
+                        headers = {"User-Agent": "Mozilla/5.0", "Accept-Encoding": "gzip, deflate"}
+                    else:
+                        url = f"{config.FF_API_GATEWAY_URL.rstrip('/')}/info?region={config.FF_REGION.lower()}&uid={uid}"
+                        headers = {"x-api-key": config.FF_API_KEY, "Accept-Encoding": "gzip, deflate"}
+
                     async with session.get(url, headers=headers, timeout=aiohttp.ClientTimeout(total=8)) as resp:
                         if resp.status == 200:
                             data = await resp.json()
-                            b = data.get("basicInfo") or {}
-                            c = data.get("clanBasicInfo") or {}
-                            return PlayerProfile(
-                                uid=uid,
-                                nickname=b.get("nickname") or f"Player ({uid})",
-                                level=int(b.get("level") or 1),
-                                likes=int(b.get("liked") or 0),
-                                current_guild_id=str(c.get("clanId")) if c.get("clanId") else None,
-                                current_guild_name=c.get("clanName") if c.get("clanName") else None,
-                                previous_guild_id=self.my_guild_id,
-                                previous_guild_name=self.my_guild_name,
-                                last_updated=int(time.time())
-                            )
+                            if "hlgamingofficial.com" in config.FF_API_GATEWAY_URL:
+                                res = data.get("result") or {}
+                                acc = res.get("AccountInfo") or {}
+                                guild = res.get("GuildInfo") or {}
+                                likes_val = acc.get("AccountLikes")
+                                likes_num = int(likes_val) if isinstance(likes_val, int) or (isinstance(likes_val, str) and likes_val.isdigit()) else 0
+                                return PlayerProfile(
+                                    uid=uid,
+                                    nickname=acc.get("AccountName") or f"Player ({uid})",
+                                    level=int(acc.get("AccountLevel") or 1),
+                                    likes=likes_num,
+                                    current_guild_id=str(guild.get("GuildID")) if guild.get("GuildID") else None,
+                                    current_guild_name=guild.get("GuildName") if guild.get("GuildName") else None,
+                                    previous_guild_id=self.my_guild_id,
+                                    previous_guild_name=self.my_guild_name,
+                                    last_updated=int(time.time())
+                                )
+                            else:
+                                b = data.get("basicInfo") or {}
+                                c = data.get("clanBasicInfo") or {}
+                                return PlayerProfile(
+                                    uid=uid,
+                                    nickname=b.get("nickname") or f"Player ({uid})",
+                                    level=int(b.get("level") or 1),
+                                    likes=int(b.get("liked") or 0),
+                                    current_guild_id=str(c.get("clanId")) if c.get("clanId") else None,
+                                    current_guild_name=c.get("clanName") if c.get("clanName") else None,
+                                    previous_guild_id=self.my_guild_id,
+                                    previous_guild_name=self.my_guild_name,
+                                    last_updated=int(time.time())
+                                )
             except Exception as e:
                 logger.warning(f"Live player lookup failed for UID {uid}: {e}")
 

@@ -64,7 +64,8 @@ async def run_webhook_monitor():
             access_token=config.FF_ACCESS_TOKEN,
             account_uid=config.FF_BOT_UID,
             region=config.FF_REGION,
-            api_key=config.FF_API_KEY
+            api_key=config.FF_API_KEY,
+            user_uid=config.FF_USER_UID
         )
 
     tracker = GuildTracker()

@@ -25,20 +25,25 @@ class FreeFireApiClient(BaseFreeFireClient):
     Real client that connects to an authenticated Free Fire API Gateway or Session Endpoint.
     Connects to Garena servers for real guild member data, live matches, approvals, and invites.
     """
-    def __init__(self, gateway_url: str = "", access_token: str = "", account_uid: str = "", region: str = "IND", api_key: str = ""):
+    def __init__(self, gateway_url: str = "", access_token: str = "", account_uid: str = "", region: str = "IND", api_key: str = "", user_uid: str = ""):
         self.gateway_url = gateway_url.rstrip("/") if gateway_url else ""
         self.access_token = access_token
         self.account_uid = account_uid
         self.region = region
         self.api_key = api_key
+        self.user_uid = user_uid
         self._session: Optional[aiohttp.ClientSession] = None
+        self._cached_snapshot: Optional[GuildSnapshot] = None
+        self._last_snapshot_time: float = 0
+        self._cache_ttl: float = 600.0  # 10 minutes cache to stay well within daily limit
 
     async def _get_session(self) -> aiohttp.ClientSession:
         if self._session is None or self._session.closed:
             headers = {
-                "User-Agent": "FreeFireGuildMonitor/1.0",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
                 "X-GARENA-REGION": self.region,
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "Accept-Encoding": "gzip, deflate"
             }
             if self.api_key:
                 headers["x-api-key"] = self.api_key
@@ -53,15 +58,83 @@ class FreeFireApiClient(BaseFreeFireClient):
         if not self.gateway_url:
             return GuildSnapshot(
                 guild_id=guild_id,
-                guild_name="HWK X6",
+                guild_name="HAWK EYE X6",
                 guild_level=1,
                 member_count=0,
-                max_members=50,
+                max_members=55,
                 members=[],
                 recent_activity_logs=[]
             )
 
+        now = time.time()
+        # Return cached snapshot if fresh to preserve API daily quota
+        if self._cached_snapshot and (now - self._last_snapshot_time < self._cache_ttl):
+            logger.info("Serving guild snapshot from active cache")
+            return self._cached_snapshot
+
         session = await self._get_session()
+
+        # Support for HL Gaming API (proapis.hlgamingofficial.com)
+        if "hlgamingofficial.com" in self.gateway_url:
+            target_uid = self.account_uid or "18402295619"
+            url = f"{self.gateway_url}/main/games/freefire/account/api?sectionName=AllData&PlayerUid={target_uid}&region={self.region.lower()}&useruid={self.user_uid}&api={self.api_key}"
+            try:
+                async with session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        res = data.get("result") or {}
+                        clan_info = res.get("GuildInfo") or {}
+                        account_info = res.get("AccountInfo") or {}
+                        captain_info = res.get("captainBasicInfo") or {}
+
+                        clan_name = clan_info.get("GuildName") or "HAWK EYEㅤX6"
+                        clan_id = str(clan_info.get("GuildID") or guild_id)
+                        clan_lvl = int(clan_info.get("GuildLevel") or 5)
+                        member_num = int(clan_info.get("GuildMember") or 53)
+                        max_mem = int(clan_info.get("GuildCapacity") or 55)
+
+                        members = []
+                        # Add Guild Leader
+                        if captain_info.get("nickname"):
+                            members.append(GuildMember(
+                                uid=str(captain_info.get("accountId") or clan_info.get("GuildOwner") or "Leader"),
+                                nickname=captain_info.get("nickname"),
+                                level=int(captain_info.get("level") or 71),
+                                role="Leader",
+                                state=MemberState.ONLINE,
+                                last_online_timestamp=int(captain_info.get("lastLoginAt") or int(now)),
+                                guild_score=int(captain_info.get("rankingPoints") or 0)
+                            ))
+                        # Add Bot Account
+                        if account_info.get("AccountName"):
+                            members.append(GuildMember(
+                                uid=str(target_uid),
+                                nickname=account_info.get("AccountName"),
+                                level=int(account_info.get("AccountLevel") or 1),
+                                role="Member",
+                                state=MemberState.ONLINE,
+                                last_online_timestamp=int(account_info.get("AccountLastLogin") or int(now)),
+                                guild_score=int(account_info.get("BrRankPoint") or 0)
+                            ))
+
+                        snapshot = GuildSnapshot(
+                            guild_id=clan_id,
+                            guild_name=clan_name,
+                            guild_level=clan_lvl,
+                            member_count=member_num,
+                            max_members=max_mem,
+                            members=members,
+                            recent_activity_logs=[]
+                        )
+                        self._cached_snapshot = snapshot
+                        self._last_snapshot_time = now
+                        return snapshot
+                    else:
+                        logger.warning(f"HL Gaming API returned HTTP {resp.status}")
+                        return self._cached_snapshot
+            except Exception as e:
+                logger.error(f"Cannot connect to HL Gaming API: {e}")
+                return self._cached_snapshot
         
         # Support for Free Fire Community API Hub (developers.freefirecommunity.com)
         if "freefirecommunity.com" in self.gateway_url:
@@ -73,12 +146,11 @@ class FreeFireApiClient(BaseFreeFireClient):
                         clan_info = data.get("clanBasicInfo") or {}
                         basic_info = data.get("basicInfo") or {}
                         
-                        clan_name = clan_info.get("clanName") or "HWK X6"
+                        clan_name = clan_info.get("clanName") or "HAWK EYE X6"
                         clan_id = str(clan_info.get("clanId") or guild_id)
-                        clan_lvl = int(clan_info.get("clanLevel") or 4)
+                        clan_lvl = int(clan_info.get("clanLevel") or 5)
                         member_num = int(clan_info.get("memberNum") or 1)
                         
-                        # Add bot player as member
                         members = [
                             GuildMember(
                                 uid=str(self.account_uid),
@@ -91,7 +163,7 @@ class FreeFireApiClient(BaseFreeFireClient):
                             )
                         ]
                         
-                        return GuildSnapshot(
+                        snapshot = GuildSnapshot(
                             guild_id=clan_id,
                             guild_name=clan_name,
                             guild_level=clan_lvl,
@@ -100,12 +172,15 @@ class FreeFireApiClient(BaseFreeFireClient):
                             members=members,
                             recent_activity_logs=[]
                         )
+                        self._cached_snapshot = snapshot
+                        self._last_snapshot_time = now
+                        return snapshot
                     else:
                         logger.warning(f"Free Fire API Hub returned HTTP {resp.status}")
-                        return None
+                        return self._cached_snapshot
             except Exception as e:
                 logger.error(f"Cannot connect to Free Fire API Hub: {e}")
-                return None
+                return self._cached_snapshot
 
         # Standard custom REST Gateway endpoint
         url = f"{self.gateway_url}/api/v1/guild/{guild_id}/members"
