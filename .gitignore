@@ -10,6 +10,10 @@ venv/
 .venv/
 env/
 
+# Local state
+channels.json
+departures.json
+
 # IDE files
 .vscode/
 .idea/

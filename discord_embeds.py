@@ -109,3 +109,47 @@ def build_invite_sent_embed(event: InviteSentEvent) -> discord.Embed:
     embed.add_field(name="Status", value="*Pending Approval upon Acceptance*", inline=False)
     embed.set_footer(text="Guild Invite Tracking")
     return embed
+
+
+def build_ex_member_new_guild_embed(event) -> discord.Embed:
+    embed = discord.Embed(
+        title="🔄 Free Fire Tracker: Ex-Member Joined New Guild!",
+        description=f"A former guild member has joined a new guild.",
+        color=0x9B59B6,  # Purple
+        timestamp=event.timestamp
+    )
+    embed.set_author(name="Guild Migration Monitor", icon_url=FREE_FIRE_ICON_URL)
+    embed.add_field(name="Player", value=f"**{event.nickname}**", inline=True)
+    embed.add_field(name="UID", value=f"`{event.uid}`", inline=True)
+    embed.add_field(name="Previous Guild", value=f"{event.previous_guild_name} (`{event.previous_guild_id}`)", inline=False)
+    embed.add_field(name="New Guild", value=f"🏆 **{event.new_guild_name}** (`{event.new_guild_id}`)", inline=False)
+    embed.set_footer(text="Ex-Member Guild Migration Tracking")
+    return embed
+
+
+def build_player_profile_embed(profile) -> discord.Embed:
+    embed = discord.Embed(
+        title=f"🔎 Player Profile & Guild Inspection",
+        description=f"Detailed guild membership lookup for UID: `{profile.uid}`",
+        color=0x3498DB
+    )
+    embed.set_author(name="Free Fire Player Tracker", icon_url=FREE_FIRE_ICON_URL)
+    embed.add_field(name="Nickname", value=f"**{profile.nickname}**", inline=True)
+    embed.add_field(name="Level", value=f"Lv. {profile.level}", inline=True)
+    embed.add_field(name="Likes", value=f"❤️ {profile.likes:,}", inline=True)
+    
+    if profile.current_guild_name:
+        guild_info = f"🏆 **{profile.current_guild_name}**\nID: `{profile.current_guild_id}`"
+    else:
+        guild_info = "❌ *Not in any guild (Guildless)*"
+    embed.add_field(name="Current Guild", value=guild_info, inline=False)
+
+    if profile.previous_guild_name and profile.previous_guild_id != profile.current_guild_id:
+        embed.add_field(
+            name="Previous Guild",
+            value=f"{profile.previous_guild_name} (`{profile.previous_guild_id}`)",
+            inline=False
+        )
+
+    embed.set_footer(text="Free Fire Player & Guild History Lookup")
+    return embed
