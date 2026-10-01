@@ -155,11 +155,11 @@ Render puts free web services to sleep after 15 minutes of inactivity. This bot 
    - **Instance Type:** `Free`
 4. Under **Environment Variables**, add:
    - `DISCORD_BOT_TOKEN`: `your_discord_bot_token`
-   - `DISCORD_CHANNEL_ID`: `1544672536661590046`
-   - `FF_GUILD_ID`: `3008075139`
-   - `FF_BOT_UID`: `15209232058`
+   - `DISCORD_CHANNEL_ID`: `154467290046`
+   - `FF_GUILD_ID`: `300139`
+   - `FF_BOT_UID`: `15209058`
    - `FF_REGION`: `IND`
-   - `MOCK_MODE`: `true`
+   - `MOCK_MODE`: `false`
 5. Click **Deploy Web Service**.
 
 ### 2. Keep It Awake 24/7 (Prevent Render Sleeping)
