@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: hwk-x6-bot
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python discord_bot.py
+    plan: free
+    autoDeploy: true
+    envVars:
+      - key: DISCORD_BOT_TOKEN
+        sync: false
+      - key: DISCORD_CHANNEL_ID
+        value: 1544672536661590046
+      - key: FF_GUILD_ID
+        value: 3008075139
+      - key: FF_BOT_UID
+        value: 15209232058
+      - key: FF_REGION
+        value: IND
+      - key: MOCK_MODE
+        value: true
+      - key: POLL_INTERVAL_SECONDS
+        value: 30

@@ -10,6 +10,7 @@ from freefire_client import FreeFireApiClient, FreeFireMockClient, BaseFreeFireC
 from guild_tracker import GuildTracker
 from channel_manager import ChannelManager
 from player_tracker import PlayerTracker
+from keep_alive import start_keep_alive_server, self_ping_task
 from discord_embeds import (
     build_status_change_embed,
     build_member_joined_embed,
@@ -133,6 +134,13 @@ async def on_ready():
     if not poll_guild_status.is_running():
         poll_guild_status.start()
         logger.info(f"Started guild monitoring task (Interval: {config.POLL_INTERVAL_SECONDS}s).")
+
+    # Start Render 24/7 Keep-Alive Web Server & Self-Pinger
+    try:
+        await start_keep_alive_server()
+        bot.loop.create_task(self_ping_task())
+    except Exception as e:
+        logger.warning(f"Keep-Alive server notice: {e}")
 
 
 # ====================================================================

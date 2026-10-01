@@ -130,6 +130,50 @@ Once your Discord bot is ready, you can switch from `MOCK_MODE=true` to live mod
    FF_API_GATEWAY_URL=http://localhost:8080
    ```
 
-### Commands in Discord
-- `!status` - Displays guild member count, online, in-match, and offline summary.
-- `!playing` - Lists all guild members currently in match with their game mode.
+### Slash Commands in Discord
+- `/setup_channels` - Automatically creates dedicated channels (`#🎮・playing-status`, `#✉・guild-invites`, `#📥・guild-joins`, `#📤・guild-leaves`).
+- `/set_channel` - Set a custom channel for playing, invites, joins, or leaves.
+- `/channels` - View current channel configuration.
+- `/track_player <uid>` - Check player profile and what guild they currently belong to.
+- `/status` - Displays guild member count, online, in-match, and offline summary.
+- `/playing` - Lists all guild members currently in match with their game mode.
+
+---
+
+## 🚀 How to Host 24/7 on Render (Free Tier)
+
+Render puts free web services to sleep after 15 minutes of inactivity. This bot comes with a built-in **Keep-Alive Web Server** and **Self-Ping loop** to stay online 24/7 for free!
+
+### 1. Deploy on Render
+1. Go to [Render Dashboard](https://dashboard.render.com/) and click **New +** ➔ **Web Service**.
+2. Select your repository: **`xritx2-bit/HWK-X6`**.
+3. Set the following settings:
+   - **Name:** `hwk-x6-bot`
+   - **Runtime:** `Python 3`
+   - **Build Command:** `pip install -r requirements.txt`
+   - **Start Command:** `python discord_bot.py`
+   - **Instance Type:** `Free`
+4. Under **Environment Variables**, add:
+   - `DISCORD_BOT_TOKEN`: `your_discord_bot_token`
+   - `DISCORD_CHANNEL_ID`: `1544672536661590046`
+   - `FF_GUILD_ID`: `3008075139`
+   - `FF_BOT_UID`: `15209232058`
+   - `FF_REGION`: `IND`
+   - `MOCK_MODE`: `true`
+5. Click **Deploy Web Service**.
+
+### 2. Keep It Awake 24/7 (Prevent Render Sleeping)
+Once deployed, Render gives you a free URL (e.g., `https://hwk-x6-bot.onrender.com`).
+
+* **Built-in Auto-Ping:** The bot automatically pings itself every 10 minutes to stay awake.
+* **External Free Pinger (Recommended Backup):**
+  1. Go to [UptimeRobot.com](https://uptimerobot.com) (free forever).
+  2. Click **Add New Monitor**.
+  3. **Monitor Type:** `HTTP(s)`
+  4. **Friendly Name:** `HWK X6 Bot`
+  5. **URL:** `https://your-app-name.onrender.com/health`
+  6. **Monitoring Interval:** `5 minutes`
+  7. Click **Create Monitor**.
+
+UptimeRobot will send an HTTP ping every 5 minutes, ensuring Render **never spins down or goes to sleep**!
+
